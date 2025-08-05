@@ -1,0 +1,81 @@
+name: Phira 构建
+
+on:
+  workflow_dispatch: 
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      UNITY_VERSION: 2021.3.21f1
+      PROJECT_PATH: phira
+      OUTPUT_DIR: ${{ github.workspace }}/build/output
+
+    steps:
+      
+      - name: 拉取仓库源码
+        uses: actions/checkout@v4
+        with:
+          repository: Winkmoon/phira
+          lfs: true
+          submodules: recursive
+          path: ${{ env.PROJECT_PATH }}
+
+    
+      - name: 安装基础依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-0 libnotify4 libnss3 libxss1 libxtst6 \
+            libatspi2.0-0 libcurl4 libssl1.1 \
+            openjdk-11-jdk android-sdk-platform-tools
+
+      
+      - name: 配置JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      
+      - name: 安装Android SDK/NDK
+        run: |
+          sudo sdkmanager "platforms;android-29" "build-tools;30.0.3" "ndk;21.4.7075529"
+          yes | sudo sdkmanager --licenses > /dev/null
+
+      
+      - name: 安装Unity
+        uses: game-ci/unity-setup@v3
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+          android: true
+          cache: true
+          project-path: ${{ env.PROJECT_PATH }}
+
+      
+      - name: 构建成品
+        uses: game-ci/unity-builder@v3
+        with:
+          unity-version: ${{ env.UNITY_VERSION }}
+          target-platform: Android
+          build-method: UnityEditor.BuildPlayerWindow.DefaultBuildMethods.BuildPlayer
+          project-path: ${{ env.PROJECT_PATH }}
+          output-path: ${{ env.OUTPUT_DIR }}
+
+      
+      - name: 验证APK生成
+        run: |
+          if [ -z "$(find ${{ env.OUTPUT_DIR }} -name '*.apk')" ]; then
+            echo "错误：未生成APK成品"
+            exit 1
+          else
+            echo "构建成功！成品路径："
+            find ${{ env.OUTPUT_DIR }} -name '*.apk'
+          fi
+
+      
+      - name: 上传成品APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: phira-finished-apk
+          path: ${{ env.OUTPUT_DIR }}/*.apk
