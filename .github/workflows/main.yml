@@ -1,7 +1,7 @@
-name: Phira 构建
+name: Phira 最终构建脚本（修复版）
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 jobs:
   build-apk:
@@ -12,7 +12,6 @@ jobs:
       OUTPUT_DIR: ${{ github.workspace }}/build/output
 
     steps:
-      
       - name: 拉取仓库源码
         uses: actions/checkout@v4
         with:
@@ -21,7 +20,6 @@ jobs:
           submodules: recursive
           path: ${{ env.PROJECT_PATH }}
 
-    
       - name: 安装基础依赖
         run: |
           sudo apt-get update
@@ -30,31 +28,27 @@ jobs:
             libatspi2.0-0 libcurl4 libssl1.1 \
             openjdk-11-jdk android-sdk-platform-tools
 
-      
       - name: 配置JDK 11
         uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
 
-      
       - name: 安装Android SDK/NDK
         run: |
           sudo sdkmanager "platforms;android-29" "build-tools;30.0.3" "ndk;21.4.7075529"
           yes | sudo sdkmanager --licenses > /dev/null
 
-      
-      - name: 安装Unity
-        uses: game-ci/unity-setup@v3
+      - name: 安装指定版本Unity
+        uses: game-ci/unity-setup@v4
         with:
           unity-version: ${{ env.UNITY_VERSION }}
           android: true
           cache: true
           project-path: ${{ env.PROJECT_PATH }}
 
-      
       - name: 构建成品
-        uses: game-ci/unity-builder@v3
+        uses: game-ci/unity-builder@v4
         with:
           unity-version: ${{ env.UNITY_VERSION }}
           target-platform: Android
@@ -62,7 +56,6 @@ jobs:
           project-path: ${{ env.PROJECT_PATH }}
           output-path: ${{ env.OUTPUT_DIR }}
 
-      
       - name: 验证APK生成
         run: |
           if [ -z "$(find ${{ env.OUTPUT_DIR }} -name '*.apk')" ]; then
@@ -73,9 +66,8 @@ jobs:
             find ${{ env.OUTPUT_DIR }} -name '*.apk'
           fi
 
-      
       - name: 上传成品APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: phira-finished-apk
           path: ${{ env.OUTPUT_DIR }}/*.apk
